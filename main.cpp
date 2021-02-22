@@ -33,6 +33,7 @@ bool csv_to_bin(std::string const &in_file, std::string const &out_file, std::fu
     if (!is.is_open() || !os.is_open()) {
         return false;
     }
+
     os.write(reinterpret_cast<const char *>(&n_sample), sizeof(int));
     os.write(reinterpret_cast<const char *>(&n_dim), sizeof(int));
     is.clear();
@@ -85,7 +86,7 @@ int main(int argc, char** argv) {
         std::cout << "Note: using space as a delimiter for csv file" << std::endl;
     }
 
-    if (input_file.find(".csv") != std::string::npos && input_file.find(".bin") != std::string::npos) {
+    if (input_file.find(".csv") != std::string::npos && output_file.find(".bin") != std::string::npos) {
         bool is_success = csv_to_bin(input_file, output_file, [](auto const n_sample, auto const n_dim) -> void {
             std::cout << "Number of elements/samples: " << n_sample << std::endl;
             std::cout << "Number of features/dimensions: " << n_dim << std::endl;
