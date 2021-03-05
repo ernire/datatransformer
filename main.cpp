@@ -223,6 +223,7 @@ int main(int argc, char** argv) {
             std::cout << std::endl << "Input file could not be opened, does it exist ?" << std::endl;
             exit(-1);
         }
+        n_elem /= sample_rate;
         std::cout << " done!" << std::endl;
     } else if (input_file.find(".bin") != std::string::npos) {
         std::vector<float> v_data_all;
@@ -240,6 +241,7 @@ int main(int argc, char** argv) {
                 }
             }
         }
+        n_elem /= sample_rate;
     } else if (input_file.find(".h5") != std::string::npos) {
 
     } else {
