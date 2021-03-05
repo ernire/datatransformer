@@ -116,27 +116,32 @@ void read_input_hdf5(const std::string &in_file, h_vec<float> &v_points, int &n_
 
 #endif
 }
+*/
 
-void read_input_bin(const std::string &in_file, h_vec<float> &v_points, int &n_coord, int &n_dim,
-        int const n_nodes, int const i_node) noexcept {
+bool read_bin(std::string const &in_file, std::vector<float> &v_data, std::size_t &n_coord, std::size_t &n_dim) noexcept {
     std::ifstream ifs(in_file, std::ios::in | std::ifstream::binary);
-    ifs.read((char *) &n_coord, sizeof(int));
-    ifs.read((char *) &n_dim, sizeof(int));
-    auto size = get_block_size(i_node, n_coord, n_nodes);
-    auto offset = get_block_offset(i_node, n_coord, n_nodes);
-    auto feature_offset = 2 * sizeof(int) + (offset * n_dim * sizeof(float));
-    v_points.resize(size * n_dim);
+    if (!ifs.is_open())
+        return false;
+    int coords, dims;
+    ifs.read((char *) &coords, sizeof(int));
+    ifs.read((char *) &dims, sizeof(int));
+    n_coord = static_cast<std::size_t>(coords);
+    n_dim = static_cast<std::size_t>(dims);
+    auto feature_offset = 2 * sizeof(int) + (n_dim * sizeof(float));
+    v_data.resize(n_coord * n_dim);
     ifs.seekg(feature_offset, std::istream::beg);
-    ifs.read((char *) &v_points[0], size * n_dim * sizeof(float));
+    ifs.read((char *) &v_data[0], n_coord * n_dim * sizeof(float));
     ifs.close();
+    return true;
 }
- */
 
-void read_input_csv(const std::string &in_file, std::vector<float> &v_data, std::size_t const n_dim, int const sample_rate) noexcept {
+
+bool read_csv(std::string const &in_file, std::vector<float> &v_data, std::size_t const n_dim, int const sample_rate) noexcept {
     std::ifstream is(in_file, std::ifstream::in);
+    if (!is.is_open())
+        return false;
     std::string line, buf;
     std::stringstream ss;
-    int write_head = 0;
     int read_head = 0;
 
     while (std::getline(is, line)) {
@@ -147,10 +152,29 @@ void read_input_csv(const std::string &in_file, std::vector<float> &v_data, std:
         ss << line;
         for (int j = 0; j < n_dim; j++) {
             ss >> buf;
-            v_data[write_head++] = static_cast<float>(atof(buf.c_str()));
+            v_data.push_back(static_cast<float>(atof(buf.c_str())));
         }
     }
     is.close();
+    return true;
+}
+
+bool write_bin(std::string const &out_file, std::vector<float> const &v_data, std::size_t const n_elem, std::size_t const n_dim) {
+    std::ofstream os(out_file, std::ios::out | std::ofstream::binary);
+    if (!os.is_open()) {
+        return false;
+    }
+
+    os.write(reinterpret_cast<const char *>(&n_elem), sizeof(int));
+    os.write(reinterpret_cast<const char *>(&n_dim), sizeof(int));
+//    float f = 0.5f;
+//    os.write(reinterpret_cast<const char *>(&val), sizeof(float));
+    for (float const val : v_data) {
+        os << val;
+    }
+    os.flush();
+    os.close();
+    return true;
 }
 
 void print_help() {
@@ -186,28 +210,57 @@ int main(int argc, char** argv) {
         }
     }
 
+    std::cout << "Input file: " << input_file << std::endl;
+    std::cout << "Output file: " << output_file << std::endl;
+
     std::vector<float> v_data;
     std::size_t n_elem, n_dim;
     if (input_file.find(".csv") != std::string::npos) {
         count_lines_and_dimensions(input_file, n_elem, n_dim);
-        std::cout << "Found " << n_elem << " elements " << " with " << n_dim << " dimensions" << std::endl;
-        std::cout << "Reading data.." << std::flush;
-        read_input_csv(input_file, v_data, n_dim, sample_rate);
+        std::cout << "Found " << n_elem << " elements" << " and " << n_dim << " dimensions" << std::endl;
+        std::cout << "Reading csv data.." << std::flush;
+        if (!read_csv(input_file, v_data, n_dim, sample_rate)) {
+            std::cout << std::endl << "Input file could not be opened, does it exist ?" << std::endl;
+            exit(-1);
+        }
         std::cout << " done!" << std::endl;
     } else if (input_file.find(".bin") != std::string::npos) {
-
-    } else if (input_file.find(".h5") != std::string::npos) {
-
-    }
-
-    if (input_file.find(".csv") != std::string::npos) {
-        std::cout << "Writing data.." << std::flush;
+        std::vector<float> v_data_all;
+        std::cout << "Reading bin data.." << std::flush;
+        if (!read_bin(input_file, v_data_all, n_elem, n_dim)) {
+            std::cout << std::endl << "Input file could not be opened, does it exist ?" << std::endl;
+            exit(-1);
+        }
         std::cout << " done!" << std::endl;
-    } else if (input_file.find(".bin") != std::string::npos) {
-
+        std::cout << "Found " << n_elem << " elements" << " and " << n_dim << " dimensions" << std::endl;
+        for (std::size_t i = 0; i < v_data_all.size() / n_dim; ++i) {
+            if (i % sample_rate == 0) {
+                for (std::size_t j = 0; j < n_dim; ++j) {
+                    v_data.push_back(v_data_all[i * n_dim + j]);
+                }
+            }
+        }
     } else if (input_file.find(".h5") != std::string::npos) {
 
+    } else {
+        std::cerr << "input file format not supported" << std::endl;
+        print_help();
+        exit(-1);
     }
+    std::cout << "Read " << v_data.size() << " floats" << std::endl;
+
+    std::cout << "Writing data.." << std::flush;
+    if (output_file.find(".csv") != std::string::npos) {
+
+        std::cout << " done!" << std::endl;
+    } else if (output_file.find(".bin") != std::string::npos) {
+        write_bin(output_file, v_data, n_elem, n_dim);
+        std::cout << " done!" << std::endl;
+    } else if (output_file.find(".h5") != std::string::npos) {
+//        std::cout << " done!" << std::endl;
+    }
+
+    std::cout << std::endl << "Data Transformation has been successfully completed" << std::endl;
 
     /*
     if (argc != 3) {
