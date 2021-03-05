@@ -167,8 +167,6 @@ bool write_bin(std::string const &out_file, std::vector<float> const &v_data, st
 
     os.write(reinterpret_cast<const char *>(&n_elem), sizeof(int));
     os.write(reinterpret_cast<const char *>(&n_dim), sizeof(int));
-//    float f = 0.5f;
-//    os.write(reinterpret_cast<const char *>(&val), sizeof(float));
     for (float const val : v_data) {
         os << val;
     }
@@ -251,7 +249,7 @@ int main(int argc, char** argv) {
     }
     std::cout << "Read " << v_data.size() << " floats" << std::endl;
 
-    std::cout << "Writing data.." << std::flush;
+    std::cout << "Writing " << n_elem << " elements.." << std::flush;
     if (output_file.find(".csv") != std::string::npos) {
 
         std::cout << " done!" << std::endl;
