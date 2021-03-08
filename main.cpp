@@ -85,7 +85,8 @@ bool read_bin(std::string const &in_file, std::vector<float> &v_data, std::size_
     ifs.read((char *) &dims, sizeof(int));
     n_coord = static_cast<std::size_t>(coords);
     n_dim = static_cast<std::size_t>(dims);
-    auto feature_offset = 2 * sizeof(int) + (n_dim * sizeof(float));
+    std::cout << "read bin coords: " << coords << " dim: " << dims << std::endl;
+    auto feature_offset = 2 * sizeof(int);
     v_data.resize(n_coord * n_dim);
     ifs.seekg(feature_offset, std::istream::beg);
     ifs.read((char *) &v_data[0], n_coord * n_dim * sizeof(float));
@@ -166,11 +167,11 @@ bool write_bin(std::string const &out_file, std::vector<float> const &v_data, st
         return false;
     }
 
-    os.write(reinterpret_cast<const char *>(&n_elem), sizeof(int));
-    os.write(reinterpret_cast<const char *>(&n_dim), sizeof(int));
-    for (float const val : v_data) {
-        os << val;
-    }
+    int elem = n_elem;
+    int dims = n_dim;
+    os.write(reinterpret_cast<const char *>(&elem), sizeof(int));
+    os.write(reinterpret_cast<const char *>(&dims), sizeof(int));
+    os.write((char *) &v_data[0], elem * dims * sizeof(float));
     os.flush();
     os.close();
     return true;
