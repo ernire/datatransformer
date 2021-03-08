@@ -23,48 +23,6 @@ void count_lines_and_dimensions(const std::string &in_file, std::size_t &n_elem,
     is.close();
 }
 
-/*
-bool csv_to_bin(std::string const &in_file, std::string const &out_file, std::function<void(int, int)> const &meta_callback) {
-    int n_dim = 0;
-    int n_sample = 0;
-    count_lines_and_dimensions(in_file, n_sample, n_dim);
-    meta_callback(n_sample, n_dim);
-    std::ifstream is(in_file, std::ios::in | std::ifstream::binary);
-    std::ofstream os(out_file, std::ios::out | std::ofstream::binary);
-    if (!is.is_open() || !os.is_open()) {
-        return false;
-    }
-
-    os.write(reinterpret_cast<const char *>(&n_sample), sizeof(int));
-    os.write(reinterpret_cast<const char *>(&n_dim), sizeof(int));
-    is.clear();
-    is.seekg(0, std::istream::beg);
-    std::string line;
-    float line_features[n_dim];
-    int line_cnt = 0;
-    int one_tenth = n_sample / 10;
-    int percent = 0;
-    while (std::getline(is, line)) {
-        std::istringstream iss(line);
-        // class
-        for (int i = 0; i < n_dim; ++i) {
-            iss >> line_features[i];
-        }
-        for (int i = 0; i < n_dim; ++i) {
-            os.write(reinterpret_cast<const char *>(&line_features[i]), sizeof(float));
-        }
-        if (++line_cnt % one_tenth == 0) {
-            percent += 10;
-            std::cout << "Finished: " << percent << "%" << std::endl;
-        }
-    }
-    os.flush();
-    os.close();
-    is.close();
-    return true;
-}
- */
-
 std::streampos get_file_size(std::string const &in_file) {
     std::streampos fsize = 0;
     std::ifstream file(in_file, std::ios::in | std::ios::binary);
@@ -136,6 +94,33 @@ bool read_bin(std::string const &in_file, std::vector<float> &v_data, std::size_
 }
 
 
+bool read_el(std::string const &in_file, std::vector<float> &v_data, std::size_t const n_dim, int const sample_rate) noexcept {
+    std::ifstream is(in_file, std::ifstream::in);
+    if (!is.is_open())
+        return false;
+    std::string line, buf;
+    std::stringstream ss;
+    int read_head = 0;
+
+    while (std::getline(is, line)) {
+        if (read_head++ % sample_rate > 0)
+            continue;
+        ss.str(std::string());
+        ss.clear();
+        ss << line;
+        for (int j = 0; j < n_dim; j++) {
+            ss >> buf;
+            auto pos = buf.find(':');
+            if (pos != std::string::npos) {
+                buf = buf.substr(pos+1);
+            }
+            v_data.push_back(static_cast<float>(atof(buf.c_str())));
+        }
+    }
+    is.close();
+    return true;
+}
+
 bool read_csv(std::string const &in_file, std::vector<float> &v_data, std::size_t const n_dim, int const sample_rate) noexcept {
     std::ifstream is(in_file, std::ifstream::in);
     if (!is.is_open())
@@ -156,6 +141,22 @@ bool read_csv(std::string const &in_file, std::vector<float> &v_data, std::size_
         }
     }
     is.close();
+    return true;
+}
+
+bool write_csv(std::string const &out_file, std::vector<float> const &v_data, std::size_t const n_elem, std::size_t const n_dim) {
+    std::ofstream os(out_file, std::ios::out);
+    if (!os.is_open()) {
+        return false;
+    }
+    for (std::size_t i = 0; i < n_elem; ++i) {
+        for (std::size_t j = 0; j < n_dim; ++j) {
+            os << v_data[i * n_dim + j] << " ";
+        }
+        os << std::endl;
+    }
+    os.flush();
+    os.close();
     return true;
 }
 
@@ -240,6 +241,17 @@ int main(int argc, char** argv) {
             }
         }
         n_elem /= sample_rate;
+    } else if (input_file.find(".el") != std::string::npos) {
+        std::vector<float> v_data_all;
+        count_lines_and_dimensions(input_file, n_elem, n_dim);
+        std::cout << "Found " << n_elem << " elements" << " and " << n_dim << " dimensions" << std::endl;
+        std::cout << "Reading el data.." << std::flush;
+        if (!read_el(input_file, v_data, n_dim, sample_rate)) {
+            std::cout << std::endl << "Input file could not be opened, does it exist ?" << std::endl;
+            exit(-1);
+        }
+        n_elem /= sample_rate;
+        std::cout << " done!" << std::endl;
     } else if (input_file.find(".h5") != std::string::npos) {
 
     } else {
@@ -251,40 +263,17 @@ int main(int argc, char** argv) {
 
     std::cout << "Writing " << n_elem << " elements.." << std::flush;
     if (output_file.find(".csv") != std::string::npos) {
-
+        write_csv(output_file, v_data, n_elem, n_dim);
         std::cout << " done!" << std::endl;
     } else if (output_file.find(".bin") != std::string::npos) {
         write_bin(output_file, v_data, n_elem, n_dim);
         std::cout << " done!" << std::endl;
     } else if (output_file.find(".h5") != std::string::npos) {
-//        std::cout << " done!" << std::endl;
+        // TODO
     }
 
     std::cout << std::endl << "Data Transformation has been successfully completed" << std::endl;
 
-    /*
-    if (argc != 3) {
-        std::cout << "Please specify an input file and an output file (in that order)" << std::endl;
-    }
-    std::string input_file(argv[1]);
-    std::string output_file(argv[2]);
-    std::cout << "Transforming " << input_file << " (" << get_file_size(input_file) << " bytes) into " << output_file << std::endl;
-    if (input_file.find(".csv") != std::string::npos || output_file.find(".csv") != std::string::npos) {
-        std::cout << "Note: using space as a delimiter for csv file" << std::endl;
-    }
-
-    if (input_file.find(".csv") != std::string::npos && output_file.find(".bin") != std::string::npos) {
-        bool is_success = csv_to_bin(input_file, output_file, [](auto const n_sample, auto const n_dim) -> void {
-            std::cout << "Number of elements/samples: " << n_sample << std::endl;
-            std::cout << "Number of features/dimensions: " << n_dim << std::endl;
-        });
-        if (is_success) {
-            std::cout << "File successfully transformed" << std::endl;
-        } else {
-            std::cout << "Error occurred, file has NOT been transformed" << std::endl;
-        }
-    }
-     */
 
     return 0;
 }
