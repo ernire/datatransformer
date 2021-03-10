@@ -95,7 +95,7 @@ bool read_bin(std::string const &in_file, std::vector<float> &v_data, std::size_
 }
 
 
-bool read_el(std::string const &in_file, std::vector<float> &v_data, std::size_t n_dim, int const sample_rate) noexcept {
+bool read_el(std::string const &in_file, std::vector<float> &v_data, std::size_t &n_dim, int const sample_rate) noexcept {
     // first pass to find highest dimension
     std::ifstream pre(in_file, std::ifstream::in);
     if (!pre.is_open())
@@ -148,7 +148,7 @@ bool read_el(std::string const &in_file, std::vector<float> &v_data, std::size_t
                 v_data[n_lines*n_dim+val] = static_cast<float>(atof(second.c_str()));
             } else {
                 // class label
-                float label = static_cast<float>(atof(buf.c_str()));
+                auto label = static_cast<float>(atof(buf.c_str()));
                 if (label == 0)
                     label = -1;
                 v_data[n_lines*n_dim] = label;
