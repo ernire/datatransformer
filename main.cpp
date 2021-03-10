@@ -125,7 +125,6 @@ bool read_el(std::string const &in_file, std::vector<float> &v_data, std::size_t
     }
     // add the class label
     ++n_dim;
-    std::cout << "Found sparse dimensionality " << n_dim << std::endl;
     v_data.resize(n_lines * n_dim, 0);
 
     std::ifstream is(in_file, std::ifstream::in);
@@ -149,7 +148,10 @@ bool read_el(std::string const &in_file, std::vector<float> &v_data, std::size_t
                 v_data[n_lines*n_dim+val] = static_cast<float>(atof(second.c_str()));
             } else {
                 // class label
-                v_data[n_lines*n_dim] = static_cast<float>(atof(buf.c_str()));
+                float label = static_cast<float>(atof(buf.c_str()));
+                if (label == 0)
+                    label = -1;
+                v_data[n_lines*n_dim] = label;
             }
         }
         ++n_lines;
