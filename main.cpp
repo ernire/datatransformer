@@ -283,12 +283,12 @@ int main(int argc, char** argv) {
     } else if (input_file.find(".el") != std::string::npos) {
         std::vector<float> v_data_all;
         count_lines_and_dimensions(input_file, n_elem, n_dim);
-        std::cout << "Found " << n_elem << " elements" << " and " << n_dim << " dimensions" << std::endl;
         std::cout << "Reading el data.." << std::flush;
         if (!read_el(input_file, v_data, n_dim, sample_rate)) {
             std::cout << std::endl << "Input file could not be opened, does it exist ?" << std::endl;
             exit(-1);
         }
+        std::cout << "Found " << n_elem << " elements" << " and " << n_dim << " dimensions" << std::endl;
         n_elem /= sample_rate;
         std::cout << " done!" << std::endl;
     } else if (input_file.find(".h5") != std::string::npos) {
