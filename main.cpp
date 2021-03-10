@@ -95,28 +95,64 @@ bool read_bin(std::string const &in_file, std::vector<float> &v_data, std::size_
 }
 
 
-bool read_el(std::string const &in_file, std::vector<float> &v_data, std::size_t const n_dim, int const sample_rate) noexcept {
+bool read_el(std::string const &in_file, std::vector<float> &v_data, std::size_t n_dim, int const sample_rate) noexcept {
+    // first pass to find highest dimension
+    std::ifstream pre(in_file, std::ifstream::in);
+    if (!pre.is_open())
+        return false;
+    std::string line, buf, first, second;
+    std::stringstream ss;
+    std::string::size_type sz;
+    n_dim = 0;
+    int n_lines = 0;
+
+    while (std::getline(pre, line)) {
+        ++n_lines;
+        ss.str(std::string());
+        ss.clear();
+        ss << line;
+        while (ss >> buf) {
+            auto pos = buf.find(':');
+            if (pos != std::string::npos) {
+                first = buf.substr(0, pos);
+                second = buf.substr(pos+1);
+                int val = std::stoi(first, &sz);
+                if (val > n_dim) {
+                    n_dim = val;
+                }
+            }
+        }
+    }
+    // add the class label
+    ++n_dim;
+    std::cout << "Found sparse dimensionality " << n_dim << std::endl;
+    v_data.resize(n_lines * n_dim, 0);
+
     std::ifstream is(in_file, std::ifstream::in);
     if (!is.is_open())
         return false;
-    std::string line, buf;
-    std::stringstream ss;
-    int read_head = 0;
 
+    int read_head = 0;
+    n_lines = 0;
     while (std::getline(is, line)) {
         if (read_head++ % sample_rate > 0)
             continue;
         ss.str(std::string());
         ss.clear();
         ss << line;
-        for (int j = 0; j < n_dim; j++) {
-            ss >> buf;
+        while (ss >> buf) {
             auto pos = buf.find(':');
             if (pos != std::string::npos) {
-                buf = buf.substr(pos+1);
+                first = buf.substr(0, pos);
+                second = buf.substr(pos+1);
+                int val = std::stoi(first, &sz);
+                v_data[n_lines*n_dim+val] = static_cast<float>(atof(second.c_str()));
+            } else {
+                // class label
+                v_data[n_lines*n_dim] = static_cast<float>(atof(buf.c_str()));
             }
-            v_data.push_back(static_cast<float>(atof(buf.c_str())));
         }
+        ++n_lines;
     }
     is.close();
     return true;
