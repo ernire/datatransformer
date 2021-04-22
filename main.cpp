@@ -7,6 +7,7 @@
 #include <functional>
 #include <numeric>
 #include <random>
+#include <algorithm>
 
 void count_lines_and_dimensions(const std::string &in_file, std::size_t &n_elem, std::size_t &n_dim) noexcept {
     std::ifstream is(in_file);
