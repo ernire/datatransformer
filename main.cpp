@@ -1,9 +1,12 @@
 #include <iostream>
+#include <random>
 #include <vector>
 #include <iterator>
 #include <sstream>
 #include <fstream>
 #include <functional>
+#include <numeric>
+#include <random>
 
 void count_lines_and_dimensions(const std::string &in_file, std::size_t &n_elem, std::size_t &n_dim) noexcept {
     std::ifstream is(in_file);
@@ -225,13 +228,27 @@ void print_help() {
     std::cout << ".h5: HDF5 file format" << std::endl;
 }
 
+void randomize_vector(std::vector<float> &v_data, std::size_t const n_elem, size_t const n_dim) {
+    std::vector<int> v_rand_index(n_elem);
+    std::iota(v_rand_index.begin(), v_rand_index.end(), 0);
+    std::shuffle(v_rand_index.begin(), v_rand_index.end(), std::mt19937(std::random_device()()));
+    std::vector<float> v_data_cpy = v_data;
+
+    for (std::size_t i = 0; i < n_elem; ++i) {
+        for (std::size_t j = 0; j < n_dim; ++j) {
+            v_data[i * n_dim + j] = v_data_cpy[v_rand_index[i] * n_dim + j];
+        }
+    }
+}
+
 int main(int argc, char** argv) {
 
     std::string input_file;
     std::string output_file;
     int sample_rate = 1;
+    bool is_rand = false;
 
-    if (argc < 5 || argc % 2 == 0) {
+    if (argc < 5) {
         std::cerr << "Wrong number of arguments" << std::endl;
         print_help();
         exit(0);
@@ -245,6 +262,8 @@ int main(int argc, char** argv) {
             output_file = argv[i+1];
         } else if (str == "-s") {
             sample_rate = std::stoi(argv[i+1]);
+        } else if (str == "-r") {
+            is_rand = true;
         }
     }
 
@@ -299,6 +318,11 @@ int main(int argc, char** argv) {
         exit(-1);
     }
     std::cout << "Read " << v_data.size() << " floats" << std::endl;
+
+    if (is_rand) {
+        std::cout << "Randomizing the elements";
+        randomize_vector(v_data, n_elem, n_dim);
+    }
 
     std::cout << "Writing " << n_elem << " elements.." << std::flush;
     if (output_file.find(".csv") != std::string::npos) {
