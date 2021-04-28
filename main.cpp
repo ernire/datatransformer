@@ -220,13 +220,14 @@ bool write_bin(std::string const &out_file, std::vector<float> const &v_data, st
 }
 
 void print_help() {
-    std::cout << std::endl << std::endl;
+    std::cout << std::endl;
     std::cout << "Usage: [executable] -i [input file] -o [output file] -s [sample rate]" << std::endl;
     std::cout << "    -s [sample rate] : Optional parameter to subsample 1 in [s] points, e.g. s=2 selects every other element" << std::endl;
+    std::cout << "    -r [1|0] : Optional parameter to randomize the input data before writing it to the output" << std::endl;
     std::cout << "Supported Input Types:" << std::endl;
     std::cout << ".csv: Text file with one sample/point per line and features/dimensions separated by a space delimiter" << std::endl;
     std::cout << ".bin: Custom binary file format" << std::endl;
-    std::cout << ".h5: HDF5 file format" << std::endl;
+    std::cout << ".h5: HDF5 file format" << std::endl << std::endl;
 }
 
 void randomize_vector(std::vector<float> &v_data, std::size_t const n_elem, size_t const n_dim) {
@@ -234,6 +235,9 @@ void randomize_vector(std::vector<float> &v_data, std::size_t const n_elem, size
     std::iota(v_rand_index.begin(), v_rand_index.end(), 0);
     std::shuffle(v_rand_index.begin(), v_rand_index.end(), std::mt19937(std::random_device()()));
     std::vector<float> v_data_cpy = v_data;
+    std::fill(v_data.begin(), v_data.end(), -1000);
+
+    std::cout << "rand check: " << n_elem << " : " << n_dim << std::endl;
 
     for (std::size_t i = 0; i < n_elem; ++i) {
         for (std::size_t j = 0; j < n_dim; ++j) {
@@ -321,7 +325,7 @@ int main(int argc, char** argv) {
     std::cout << "Read " << v_data.size() << " floats" << std::endl;
 
     if (is_rand) {
-        std::cout << "Randomizing the elements";
+        std::cout << "Randomizing the elements" << std::endl;
         randomize_vector(v_data, n_elem, n_dim);
     }
 
